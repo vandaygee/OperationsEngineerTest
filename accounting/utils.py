@@ -88,7 +88,6 @@ class PolicyAccounting(object):
         else:
             print "THIS POLICY SHOULD NOT CANCEL"
 
-
     def make_invoices(self):
         for invoice in self.policy.invoices:
             invoice.delete()
@@ -135,6 +134,41 @@ class PolicyAccounting(object):
         for invoice in invoices:
             db.session.add(invoice)
         db.session.commit()
+
+def generate_monthly_invoices(policy_id):
+        policy = Policy.query.filter_by(id=policy_id).one()
+
+        if policy.invoices:
+            if policy.policy_number == "Policy Three":
+                billing_schedule = 12
+                invoices = []
+                first_invoice = Invoice(policy.id,
+                                        policy.effective_date,  # bill_date
+                                        policy.effective_date + relativedelta(months=1),  # due
+                                        policy.effective_date + relativedelta(months=1, days=14),  # cancel
+                                        policy.annual_premium)
+                invoices.append(first_invoice)
+
+                first_invoice.amount_due = first_invoice.amount_due / billing_schedule
+                for i in range(1, billing_schedule):
+                    months_after_eff_date = i * 1
+                    bill_date = policy.effective_date + relativedelta(months=months_after_eff_date)
+                    invoice = Invoice(policy.id,
+                                      bill_date,
+                                      bill_date + relativedelta(months=1),
+                                      bill_date + relativedelta(months=1, days=14),
+                                      policy.annual_premium / billing_schedule)
+                    invoices.append(invoice)
+
+                for invoice in invoices:
+                    db.session.add(invoice)
+                db.session.commit()
+
+            else:
+                print("This not Policy Three. Get the appropriate representation of Policy Three")
+        else:
+            print("Policy not found")
+
 
 ################################
 # The functions below are for the db and 
@@ -190,6 +224,8 @@ def insert_data():
 
     for policy in policies:
         PolicyAccounting(policy.id)
+
+    generate_monthly_invoices(p3.id) #generate invoices for Policy Three (A monthly billing schedule)
 
     payment_for_p2 = Payment(p2.id, anna_white.id, 400, date(2015, 2, 1))
     db.session.add(payment_for_p2)
