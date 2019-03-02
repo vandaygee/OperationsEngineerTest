@@ -55,6 +55,3 @@ class TestGeneratePolicyThreeInvoices(unittest.TestCase):
         # test if the generated policy invoice due amount is equals to policy annual amount divided by 12
         self.assertEqual(self.policy.invoices[1].amount_due, self.policy.annual_premium / 12)
 
-
-if __name__ == '__main__':
-    unittest.main()
