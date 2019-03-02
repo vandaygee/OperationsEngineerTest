@@ -51,7 +51,7 @@ class TestGeneratePolicyThreeInvoices(unittest.TestCase):
         self.assertTrue(self.policy.invoices)
         generate_monthly_invoices(self.policy.id)
         # test if the number of policy three invoices is 12 plus the unaltered invoice generated
-        self.assertEqual(len(self.policy.invoices), (12 + 1))
+        self.assertEqual(len(self.policy.invoices), 12)
         # test if the generated policy invoice due amount is equals to policy annual amount divided by 12
-        self.assertEqual(self.policy.invoices[1].amount_due, self.policy.annual_premium / 12)
+        self.assertEqual(self.policy.invoices[0].amount_due, self.policy.annual_premium / 12)
 
