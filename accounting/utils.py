@@ -2,9 +2,13 @@
 
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
+import logging
 
 from accounting import db
 from models import Contact, Invoice, Payment, Policy
+
+
+logging.basicConfig(format='%(process)d-%(levelname)s-%(message)s')
 
 """
 #######################################################
@@ -22,38 +26,54 @@ class PolicyAccounting(object):
         if not self.policy.invoices:
             self.make_invoices()
 
+    """
+    This function gets the account balance of a policy i.e the amount left to paid on the policy
+    """
     def return_account_balance(self, date_cursor=None):
+
+        # this sets the filtering date to today's date if date is not specified
         if not date_cursor:
             date_cursor = datetime.now().date()
 
+        # gets all invoices available for a policy
         invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
                                 .filter(Invoice.bill_date <= date_cursor)\
                                 .order_by(Invoice.bill_date)\
                                 .all()
+        # sets the initial total amount due to be paid on the policy to 0
         due_now = 0
 
+        # get the amount due for each invoices and increments the total amount due to be paid on the policy
         for invoice in invoices:
             due_now += invoice.amount_due
 
+        # gets all the payments made so far on the policy
         payments = Payment.query.filter_by(policy_id=self.policy.id)\
                                 .filter(Payment.transaction_date <= date_cursor)\
                                 .all()
+        # deducts all the payments made so far on the policy from the policy total amount due
         for payment in payments:
             due_now -= payment.amount_paid
 
-
+        # returns the total amount left to paid on the policy
         return due_now
 
+    """
+    This function enables payment to be made for a policy
+    """
     def make_payment(self, contact_id=None, date_cursor=None, amount=0):
+        # this sets the filtering date to today's date if date is not specified
         if not date_cursor:
             date_cursor = datetime.now().date()
 
+        # if contact_id is not set, get the policy name_insured and set contact_id to it
         if not contact_id:
             try:
                 contact_id = self.policy.named_insured
             except:
                 pass
 
+        # create a payment instance and add the payment to database
         payment = Payment(self.policy.id,
                           contact_id,
                           amount,
@@ -61,6 +81,7 @@ class PolicyAccounting(object):
         db.session.add(payment)
         db.session.commit()
 
+        # returns the an instance of the payment made
         return payment
 
     def evaluate_cancellation_pending_due_to_non_pay(self, date_cursor=None):
@@ -72,16 +93,26 @@ class PolicyAccounting(object):
         """
         pass
 
+    """
+    This function checks for invoice cancellation
+    """
     def evaluate_cancel(self, date_cursor=None):
+        # this sets the filtering date to today's date if date is not specified
         if not date_cursor:
             date_cursor = datetime.now().date()
 
+        # gets all invoices available for the policy
         invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
                                 .filter(Invoice.cancel_date <= date_cursor)\
                                 .order_by(Invoice.bill_date)\
                                 .all()
 
+        # checks for all the invoices available for the policy
         for invoice in invoices:
+            """
+            check if there is still an outstanding invoice amount_due on the the invoice
+            if there's prompt for a policy cancellation
+            """
             if not self.return_account_balance(invoice.cancel_date):
                 continue
             else:
@@ -90,84 +121,139 @@ class PolicyAccounting(object):
         else:
             print "THIS POLICY SHOULD NOT CANCEL"
 
+    """
+        This function generates invoices for a new created policy
+    """
     def make_invoices(self):
+        # delete all invoices attached to the policy
         for invoice in self.policy.invoices:
             invoice.delete()
 
+        # dictionary for billing schedules
         billing_schedules = {'Annual': None, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
 
+        # create an empty list to store all invoices generated for the policy
         invoices = []
+        # create a initial invoice that holds the total annual amount to paid on the policy
         first_invoice = Invoice(self.policy.id,
                                 self.policy.effective_date, #bill_date
                                 self.policy.effective_date + relativedelta(months=1), #due
                                 self.policy.effective_date + relativedelta(months=1, days=14), #cancel
                                 self.policy.annual_premium)
+        # add the initial invoice to invoice list
         invoices.append(first_invoice)
 
         if self.policy.billing_schedule == "Annual":
+            """
+            if the policy billing schedule is Annual don't generate any additional invoice(s) for the policy
+            """
             pass
         elif self.policy.billing_schedule == "Two-Pay":
+            """
+            if the policy billing schedule is Two-Pay generate 2 invoices for the policy
+            """
+            # set the initial invoice amount to the total policy due amount divided by number of times to pay it
             first_invoice.amount_due = first_invoice.amount_due / billing_schedules.get(self.policy.billing_schedule)
+
+            # generate individual invoice for the number of time to pay for the policy
             for i in range(1, billing_schedules.get(self.policy.billing_schedule)):
+                # calculate the month for the next payment
                 months_after_eff_date = i*6
+                # set the date fr the bill date
                 bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
+                # create an instance of invoice
                 invoice = Invoice(self.policy.id,
-                                  bill_date,
-                                  bill_date + relativedelta(months=1),
-                                  bill_date + relativedelta(months=1, days=14),
+                                  bill_date,  # bill date
+                                  bill_date + relativedelta(months=1),  # due date
+                                  bill_date + relativedelta(months=1, days=14),  # cancel date
                                   self.policy.annual_premium / billing_schedules.get(self.policy.billing_schedule))
+                # add the generated invoice to invoice list
                 invoices.append(invoice)
         elif self.policy.billing_schedule == "Quarterly":
+            """
+            if the policy billing schedule is Quarterly generate 4 invoices for the policy
+            """
+            # set the initial invoice amount to the total policy due amount divided by number of times to pay it
             first_invoice.amount_due = first_invoice.amount_due / billing_schedules.get(self.policy.billing_schedule)
+            # generate individual invoice for the number of time to pay for the policy
             for i in range(1, billing_schedules.get(self.policy.billing_schedule)):
+                # calculate the month for the next payment
                 months_after_eff_date = i*3
+                # set the date fr the bill date
                 bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
+                # create an instance of invoice
                 invoice = Invoice(self.policy.id,
-                                  bill_date,
-                                  bill_date + relativedelta(months=1),
-                                  bill_date + relativedelta(months=1, days=14),
+                                  bill_date,  # bill date
+                                  bill_date + relativedelta(months=1),  # due date
+                                  bill_date + relativedelta(months=1, days=14), # cancel date
                                   self.policy.annual_premium / billing_schedules.get(self.policy.billing_schedule))
+                # add the generated invoice to invoice list
                 invoices.append(invoice)
+
         elif self.policy.billing_schedule == "Monthly":
+            """
+            if the policy billing schedule is Monthly generate invoice for monthly payment yet
+            """
             pass
         else:
             print "You have chosen a bad billing schedule."
 
+        # save all the generated invoices to the database
         for invoice in invoices:
             db.session.add(invoice)
         db.session.commit()
 
+    """
+        This function generates invoices for policy three (a monthly schedule)
+        Invoice(s) are not generated automatically when policy three plan is created
+        This function should be run in shell with the Policy Three id passed to it
+    """
 def generate_monthly_invoices(policy_id):
+        # query the database to get the policy with the id
         policy = Policy.query.filter_by(id=policy_id).one()
 
+        # check if the policy has an initial invoice generated by PolicyAccounting
         if policy.invoices:
+
+            # check if the policy is a Policy Three plan
             if policy.policy_number == "Policy Three":
+                # delete any pre-generated invoice for the policy
+                for invoice in policy.invoices:
+                    db.session.delete(invoice)
+
+                # set the billing schedule to 12 i.e monthly
                 billing_schedule = 12
+                # create an empty list to store all invoices generated for the policy
                 invoices = []
+                # create an instance of invoice
                 first_invoice = Invoice(policy.id,
                                         policy.effective_date,  # bill_date
                                         policy.effective_date + relativedelta(months=1),  # due
                                         policy.effective_date + relativedelta(months=1, days=14),  # cancel
                                         policy.annual_premium)
+
                 invoices.append(first_invoice)
 
                 first_invoice.amount_due = first_invoice.amount_due / billing_schedule
                 for i in range(1, billing_schedule):
                     months_after_eff_date = i * 1
                     bill_date = policy.effective_date + relativedelta(months=months_after_eff_date)
+                    # create an instance of invoice
                     invoice = Invoice(policy.id,
                                       bill_date,
                                       bill_date + relativedelta(months=1),
                                       bill_date + relativedelta(months=1, days=14),
                                       policy.annual_premium / billing_schedule)
+                    # add the generated invoice to invoice list
                     invoices.append(invoice)
 
+                # save all the generated invoices to the database
                 for invoice in invoices:
                     db.session.add(invoice)
                 db.session.commit()
-
+                print "Invoices generated for Policy Three (Monthly Schedule)"
             else:
-                print("This not Policy Three. Get the appropriate representation of Policy Three")
+                print("This not a Policy Three. Get the appropriate representation of Policy Three")
         else:
             print("Policy not found")
 
@@ -226,8 +312,6 @@ def insert_data():
 
     for policy in policies:
         PolicyAccounting(policy.id)
-
-    generate_monthly_invoices(p3.id) #generate invoices for Policy Three (A monthly billing schedule)
 
     payment_for_p2 = Payment(p2.id, anna_white.id, 400, date(2015, 2, 1))
     db.session.add(payment_for_p2)
