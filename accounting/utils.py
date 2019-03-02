@@ -297,6 +297,43 @@ def create_policy_four():
     print "Policy Four Created and invoices are generated for it"
 
 
+"""
+    This function helps Mary Sue Client to pay off policy one
+
+    Note: This function should be run from the shell
+"""
+
+
+def pay_off_policy_one():
+    try:
+        policy_id = int(raw_input("Enter Policy Id: "))
+        policy_name_insured = raw_input("Enter Name Insured: ")
+        amount = int(raw_input("Enter amount: "))
+        pay_date = map(int, raw_input("Enter date (YYYY/mm/dd): ").strip().split("/"))
+
+        # query the database to get the policy with the id
+        policy = Policy.query.filter_by(id=policy_id).one()
+        if policy:
+            if policy.policy_number == "Policy One":
+                contact = Contact.query.filter_by(name=policy_name_insured, role="Named Insured").one()
+                if contact:
+                    if policy.annual_premium == amount:
+                        pa = PolicyAccounting(policy.id)
+                        pa.make_payment(contact.id, date(pay_date[0], pay_date[1], pay_date[2]), amount)
+                        print "Policy One paid off successfully!"
+                    else:
+                        print " Amount entered is not the amount expected. Try again with the exact amount" \
+                              " expected to be paid"
+                else:
+                    print "Name Insured not found. Try again with a valid Name Insured"
+            else:
+                print "Policy is not Policy One. Try again with a valid Policy One Id!!!"
+        else:
+            print "Invalid policy Id entered. Try again with a valid policy Id!"
+    except:
+        print "\nAn error occurred while processing your payment. Try again and be sure are input are correctly entered"
+
+
 ################################
 # The functions below are for the db and 
 # shouldn't need to be edited.
