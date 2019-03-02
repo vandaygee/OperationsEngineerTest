@@ -16,6 +16,7 @@ This is the base code for the engineer project.
 #######################################################
 """
 
+
 class PolicyAccounting(object):
     """
      Each policy has its own instance of accounting.
@@ -130,7 +131,7 @@ class PolicyAccounting(object):
             invoice.delete()
 
         # dictionary for billing schedules
-        billing_schedules = {'Annual': None, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
+        billing_schedules = {'Annual': None, 'Two-Pay': 2, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
 
         # create an empty list to store all invoices generated for the policy
         invoices = []
@@ -203,11 +204,15 @@ class PolicyAccounting(object):
             db.session.add(invoice)
         db.session.commit()
 
-    """
-        This function generates invoices for policy three (a monthly schedule)
-        Invoice(s) are not generated automatically when policy three plan is created
-        This function should be run in shell with the Policy Three id passed to it
-    """
+
+"""
+    This function generates invoices for policy three (a monthly schedule)
+    Invoice(s) are not generated automatically when policy three plan is created
+    
+    Note: This function should be run in shell with the Policy Three id passed to it
+"""
+
+
 def generate_monthly_invoices(policy_id):
         # query the database to get the policy with the id
         policy = Policy.query.filter_by(id=policy_id).one()
@@ -256,6 +261,40 @@ def generate_monthly_invoices(policy_id):
                 print("This not a Policy Three. Get the appropriate representation of Policy Three")
         else:
             print("Policy not found")
+
+
+"""
+    This function creates Policy Four with the following details
+        - Policy Number: 'Policy Four'
+        - Effective: 2/1/2015
+        - Billing Schedule: 'Two-Pay'
+        - Named Insured: 'Ryan Bucket'
+        - Agent: 'John Doe'
+        - Annual Premium: $500
+    and also generates invoice(s) for it
+    
+    Note: This function should be run from shell
+"""
+
+
+def create_policy_four():
+    # get contact whose name and Role are John Doe and role respectively
+    john_doe_agent = Contact.query.filter_by(name="John Doe", role="Agent").one()
+    # get contact whose name and Role are Ryan Bucket and Name Insured respectively
+    ryan_bucket = Contact.query.filter_by(name="Ryan Bucket", role="Named Insured").one()
+    #   create a policy instance for Policy Four with annual amount of $500
+    p4 = Policy('Policy Four', date(2015, 2, 1), 500)
+    p4.billing_schedule = 'Two-Pay'  # billing schedule
+    p4.agent = john_doe_agent.id  # agent
+    p4.named_insured = ryan_bucket.id  # named insured
+
+    # save Policy Four to database
+    db.session.add(p4)
+    db.session.commit()
+
+    # Use PolicyAccounting to create invoice(s) for Policy Four
+    PolicyAccounting(p4.id)
+    print "Policy Four Created and invoices are generated for it"
 
 
 ################################
