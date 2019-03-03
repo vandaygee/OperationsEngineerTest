@@ -36,7 +36,7 @@ class PolicyAccounting(object):
         if not date_cursor:
             date_cursor = datetime.now().date()
 
-        # gets all invoices available for a policy
+        # gets all the policy's invoices whose bill date is less than or equals to the date_cursor
         invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
                                 .filter(Invoice.bill_date <= date_cursor)\
                                 .order_by(Invoice.bill_date)\
@@ -44,11 +44,11 @@ class PolicyAccounting(object):
         # sets the initial total amount due to be paid on the policy to 0
         due_now = 0
 
-        # get the amount due for each invoices and increments the total amount due to be paid on the policy
+        # get the amount to have been paid before date_cursor
         for invoice in invoices:
             due_now += invoice.amount_due
 
-        # gets all the payments made so far on the policy
+        # gets all the payments made before the date_cursor
         payments = Payment.query.filter_by(policy_id=self.policy.id)\
                                 .filter(Payment.transaction_date <= date_cursor)\
                                 .all()
@@ -85,6 +85,10 @@ class PolicyAccounting(object):
         # returns the an instance of the payment made
         return payment
 
+    """
+        This function checks for policy's cancellation pending due to non-pay
+    """
+
     def evaluate_cancellation_pending_due_to_non_pay(self, date_cursor=None):
         """
          If this function returns true, an invoice
@@ -92,7 +96,28 @@ class PolicyAccounting(object):
          being paid in full. However, it has not necessarily
          made it to the cancel_date yet.
         """
-        pass
+        # this sets the filtering date to today's date if date is not specified
+        if not date_cursor:
+            date_cursor = datetime.now().date()
+            print date_cursor
+
+        # gets the policy's invoice whose due date has passed but not made it yet to cancel_date
+        invoices = Invoice.query.filter_by(policy_id=self.policy.id) \
+            .filter(Invoice.due_date <= date_cursor, Invoice.cancel_date >= date_cursor) \
+            .order_by(Invoice.bill_date) \
+            .all()
+
+        for invoice in invoices:
+            # check if there has been payment for the invoice
+            payments = Payment.query.filter_by(policy_id=self.policy.id) \
+                .filter(Payment.transaction_date <= invoice.cancel_date,
+                        Payment.transaction_date >= invoice.bill_date) \
+                .all()
+
+            if not payments:
+                self.policy.status = "Cancellation pending due to non-pay"
+                db.session.commit()
+                return invoice
 
     """
     This function checks for invoice cancellation
@@ -102,17 +127,17 @@ class PolicyAccounting(object):
         if not date_cursor:
             date_cursor = datetime.now().date()
 
-        # gets all invoices available for the policy
+        # gets all the policy's invoices whose cancel date is in the past
         invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
                                 .filter(Invoice.cancel_date <= date_cursor)\
                                 .order_by(Invoice.bill_date)\
                                 .all()
 
-        # checks for all the invoices available for the policy
+        # checks for all the policy's invoices that should have been canceled available for
         for invoice in invoices:
             """
             check if there is still an outstanding invoice amount_due on the the invoice
-            if there's prompt for a policy cancellation
+            if there is prompt for a policy cancellation
             """
             if not self.return_account_balance(invoice.cancel_date):
                 continue
