@@ -101,20 +101,17 @@ class PolicyAccounting(object):
             date_cursor = datetime.now().date()
             print date_cursor
 
-        # gets the policy's invoice whose due date has passed but not made it yet to cancel_date
+        # gets all the policy's invoices whose cancel date is in the past
         invoices = Invoice.query.filter_by(policy_id=self.policy.id) \
-            .filter(Invoice.due_date <= date_cursor, Invoice.cancel_date >= date_cursor) \
+            .filter(Invoice.cancel_date <= date_cursor) \
             .order_by(Invoice.bill_date) \
             .all()
 
         for invoice in invoices:
-            # check if there has been payment for the invoice
-            payments = Payment.query.filter_by(policy_id=self.policy.id) \
-                .filter(Payment.transaction_date <= invoice.cancel_date,
-                        Payment.transaction_date >= invoice.bill_date) \
-                .all()
-
-            if not payments:
+            if not self.return_account_balance(invoice.cancel_date):
+                continue
+            else:
+                break
                 self.policy.status = "Cancellation pending due to non-pay"
                 db.session.commit()
                 return invoice
@@ -134,7 +131,7 @@ class PolicyAccounting(object):
                 .order_by(Invoice.bill_date) \
                 .all()
 
-            # checks for all the policy's invoices that should have been canceled available for
+            # checks for all the policy's invoices that should have been  available for
             for invoice in invoices:
                 """
                 check if there is still an outstanding invoice amount_due on the the invoice
@@ -142,7 +139,6 @@ class PolicyAccounting(object):
                 """
 
                 if not self.return_account_balance(invoice.cancel_date):
-                    print "not in"
                     continue
                 else:
                     print "THIS POLICY SHOULD HAVE CANCELED"
@@ -262,13 +258,12 @@ class PolicyAccounting(object):
         if new_billing_schedule in billing_schedules.keys():
             self.policy.billing_schedule = new_billing_schedule
 
-            # set old invoice delete to TRUE
             for invoice in self.policy.invoices:
                 # get payment for this invoice
                 payment = Payment.query.filter_by(policy_id=self.policy.id) \
                     .filter(Payment.transaction_date <= invoice.cancel_date,
                             Payment.transaction_date >= invoice.bill_date) \
-                    .one()
+                    .all()
 
                 # set invoice to delete if no payment made yet for the transaction
                 if not payment:
@@ -489,6 +484,8 @@ def pay_off_policy_one():
             print "Invalid policy Id entered. Try again with a valid policy Id!"
     except:
         print "\nAn error occurred while processing your payment. Try again and be sure are input are correctly entered"
+
+
 
 def test_change():
     pa = PolicyAccounting(2)
