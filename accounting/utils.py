@@ -486,14 +486,18 @@ def pay_off_policy_one():
         print "\nAn error occurred while processing your payment. Try again and be sure are input are correctly entered"
 
 
+"""
+This function test the policy cancellation function
+It cancels policy Two
 
-def test_change():
-    pa = PolicyAccounting(2)
-    pa.schedule_changing("Monthly")
+Note: It should be run in the shell
+"""
+
 
 def test_policy_cancellation():
     pa = PolicyAccounting(2)
-    print pa.return_account_balance()
+    pa.evaluate_cancel()
+
 
 ################################
 # The functions below are for the db and 
