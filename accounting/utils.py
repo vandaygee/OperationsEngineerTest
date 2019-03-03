@@ -38,7 +38,7 @@ class PolicyAccounting(object):
 
         # gets all the policy's invoices whose bill date is less than or equals to the date_cursor
         invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
-                                .filter(Invoice.bill_date <= date_cursor)\
+                                .filter(Invoice.bill_date <= date_cursor, Invoice.deleted != int(True))\
                                 .order_by(Invoice.bill_date)\
                                 .all()
         # sets the initial total amount due to be paid on the policy to 0
@@ -123,29 +123,52 @@ class PolicyAccounting(object):
     This function checks for invoice cancellation
     """
     def evaluate_cancel(self, date_cursor=None):
-        # this sets the filtering date to today's date if date is not specified
-        if not date_cursor:
-            date_cursor = datetime.now().date()
+        if self.policy.status != "Canceled":
+            # this sets the filtering date to today's date if date is not specified
+            if not date_cursor:
+                date_cursor = datetime.now().date()
 
-        # gets all the policy's invoices whose cancel date is in the past
-        invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
-                                .filter(Invoice.cancel_date <= date_cursor)\
-                                .order_by(Invoice.bill_date)\
-                                .all()
+            # gets all the policy's invoices whose cancel date is in the past
+            invoices = Invoice.query.filter_by(policy_id=self.policy.id) \
+                .filter(Invoice.cancel_date <= date_cursor) \
+                .order_by(Invoice.bill_date) \
+                .all()
 
-        # checks for all the policy's invoices that should have been canceled available for
-        for invoice in invoices:
-            """
-            check if there is still an outstanding invoice amount_due on the the invoice
-            if there is prompt for a policy cancellation
-            """
-            if not self.return_account_balance(invoice.cancel_date):
-                continue
+            # checks for all the policy's invoices that should have been canceled available for
+            for invoice in invoices:
+                """
+                check if there is still an outstanding invoice amount_due on the the invoice
+                if there is prompt for a policy cancellation
+                """
+
+                if not self.return_account_balance(invoice.cancel_date):
+                    print "not in"
+                    continue
+                else:
+                    print "THIS POLICY SHOULD HAVE CANCELED"
+                    choice = raw_input("Do you want to cancel policy now? (y/n): ")
+                    if choice == 'Y' or choice == 'y':
+                        description = raw_input("Enter cancellation description: ")
+                        self.policy.status = "Canceled"
+                        self.policy.cancellation_reason = "Due for cancellation"
+                        self.policy.cancellation_description = description
+                        self.policy.cancel_date = datetime.now().date()
+                        db.session.commit()
+                        print self.policy.policy_number, " cancelled successfully!!!"
+                    break
             else:
-                print "THIS POLICY SHOULD HAVE CANCELED"
-                break
+                print "THIS POLICY SHOULD NOT CANCEL"
+                choice = raw_input("Do you still want to proceed with policy cancellation? (y/n): ")
+                if choice == 'Y' or choice == 'y':
+                    description = raw_input("Enter cancellation description: ")
+                    self.policy.status = "Canceled"
+                    self.policy.cancellation_reason = "Other reason"
+                    self.policy.cancellation_description = description
+                    self.policy.cancel_date = datetime.now().date()
+                    db.session.commit()
+                    print self.policy.policy_number, " canceled successfully!!!"
         else:
-            print "THIS POLICY SHOULD NOT CANCEL"
+            print self.policy.policy_number, " is canceled already"
 
     """
         This function generates invoices for a new created policy
@@ -241,7 +264,15 @@ class PolicyAccounting(object):
 
             # set old invoice delete to TRUE
             for invoice in self.policy.invoices:
-                invoice.deleted = True
+                # get payment for this invoice
+                payment = Payment.query.filter_by(policy_id=self.policy.id) \
+                    .filter(Payment.transaction_date <= invoice.cancel_date,
+                            Payment.transaction_date >= invoice.bill_date) \
+                    .one()
+
+                # set invoice to delete if no payment made yet for the transaction
+                if not payment:
+                    invoice.deleted = True
 
             # create an empty list to store all the new invoices generated for the policy
             invoices = []
@@ -459,6 +490,13 @@ def pay_off_policy_one():
     except:
         print "\nAn error occurred while processing your payment. Try again and be sure are input are correctly entered"
 
+def test_change():
+    pa = PolicyAccounting(2)
+    pa.schedule_changing("Monthly")
+
+def test_policy_cancellation():
+    pa = PolicyAccounting(2)
+    print pa.return_account_balance()
 
 ################################
 # The functions below are for the db and 
