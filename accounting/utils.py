@@ -229,6 +229,107 @@ class PolicyAccounting(object):
             db.session.add(invoice)
         db.session.commit()
 
+    """
+        This function implements being able to change the billing schedule in the middle of a policy
+    """
+    def schedule_changing(self, new_billing_schedule):
+        account_balance = self.return_account_balance()
+        # dictionary for billing schedules
+        billing_schedules = {'Annual': None, 'Two-Pay': 2, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
+        if new_billing_schedule in billing_schedules.keys():
+            self.policy.billing_schedule = new_billing_schedule
+
+            # set old invoice delete to TRUE
+            for invoice in self.policy.invoices:
+                invoice.deleted = True
+
+            # create an empty list to store all the new invoices generated for the policy
+            invoices = []
+            # create a initial invoice that holds the total annual amount to paid on the policy
+            first_invoice = Invoice(self.policy.id,
+                                    self.policy.effective_date,  # bill_date
+                                    self.policy.effective_date + relativedelta(months=1),  # due
+                                    self.policy.effective_date + relativedelta(months=1, days=14),  # cancel
+                                    account_balance)
+            # add the initial invoice to invoice list
+            invoices.append(first_invoice)
+
+            if self.policy.billing_schedule == "Annual":
+                """
+                if the policy billing schedule is Annual don't generate any additional invoice(s) for the policy
+                """
+                pass
+            elif self.policy.billing_schedule == "Two-Pay":
+                """
+                if the policy billing schedule is Two-Pay generate 2 invoices for the policy
+                """
+                # set the initial invoice amount to the total policy due amount divided by number of times to pay it
+                first_invoice.amount_due = first_invoice.amount_due / billing_schedules.get(
+                    self.policy.billing_schedule)
+
+                # generate individual invoice for the number of time to pay for the policy
+                for i in range(1, billing_schedules.get(self.policy.billing_schedule)):
+                    # calculate the month for the next payment
+                    months_after_eff_date = i * 6
+                    # set the date fr the bill date
+                    bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
+                    # create an instance of invoice
+                    invoice = Invoice(self.policy.id,
+                                      bill_date,  # bill date
+                                      bill_date + relativedelta(months=1),  # due date
+                                      bill_date + relativedelta(months=1, days=14),  # cancel date
+                                      account_balance / billing_schedules.get(self.policy.billing_schedule))
+                    # add the generated invoice to invoice list
+                    invoices.append(invoice)
+            elif self.policy.billing_schedule == "Quarterly":
+                """
+                if the policy billing schedule is Quarterly generate 4 invoices for the policy
+                """
+                # set the initial invoice amount to the total policy due amount divided by number of times to pay it
+                first_invoice.amount_due = first_invoice.amount_due / billing_schedules.get(
+                    self.policy.billing_schedule)
+                # generate individual invoice for the number of time to pay for the policy
+                for i in range(1, billing_schedules.get(self.policy.billing_schedule)):
+                    # calculate the month for the next payment
+                    months_after_eff_date = i * 3
+                    # set the date fr the bill date
+                    bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
+                    # create an instance of invoice
+                    invoice = Invoice(self.policy.id,
+                                      bill_date,  # bill date
+                                      bill_date + relativedelta(months=1),  # due date
+                                      bill_date + relativedelta(months=1, days=14),  # cancel date
+                                      account_balance / billing_schedules.get(self.policy.billing_schedule))
+                    # add the generated invoice to invoice list
+                    invoices.append(invoice)
+
+            elif self.policy.billing_schedule == "Monthly":
+                """
+                if the policy billing schedule is Monthly generate invoices for monthly payment 
+                """
+                first_invoice.amount_due = first_invoice.amount_due / billing_schedules.get(
+                    self.policy.billing_schedule)
+                for i in range(1, billing_schedules.get(self.policy.billing_schedule)):
+                    months_after_eff_date = i * 1
+                    bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
+                    # create an instance of invoice
+                    invoice = Invoice(self.policy.id,
+                                      bill_date,
+                                      bill_date + relativedelta(months=1),
+                                      bill_date + relativedelta(months=1, days=14),
+                                      account_balance / billing_schedules.get(self.policy.billing_schedule))
+                    # add the generated invoice to invoice list
+                    invoices.append(invoice)
+
+            # save all the generated invoices to the database
+            for invoice in invoices:
+                db.session.add(invoice)
+            db.session.commit()
+            print self.policy.policy_number, " billing schedule changed to ", self.policy.billing_schedule, \
+                " successfully"
+        else:
+            print "Bad Billing Schedule Selected"
+
 
 """
     This function generates invoices for policy three (a monthly schedule)
