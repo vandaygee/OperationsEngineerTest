@@ -1,0 +1,93 @@
+body {
+    font-family: "Lato", sans-serif;
+}
+
+
+.main-head{
+    height: 150px;
+    background: #FFF;
+}
+
+.sidenav {
+    height: 100%;
+    background-color: #000;
+    overflow-x: hidden;
+    padding-top: 20px;
+}
+
+
+.main {
+    padding: 0px 10px;
+}
+
+@media screen and (max-height: 450px) {
+    .sidenav {padding-top: 15px;}
+}
+
+@media screen and (max-width: 450px) {
+    .query-form{
+        margin-top: 20%;
+    }
+
+    .register-form{
+        margin-top: 10%;
+    }
+
+     .invoice-display{
+        margin-top: 5%;
+    }
+
+    .policy-details{
+        margin-top: 2%;
+    }
+
+    .err-msg{
+        margin-top: 1%;
+    }
+}
+
+@media screen and (min-width: 768px){
+    .main{
+        margin-left: 30%;
+    }
+
+    .sidenav{
+        width: 30%;
+        position: fixed;
+        z-index: 1;
+        top: 0;
+        left: 0;
+    }
+
+    .query-form{
+        margin-top: 20%;
+    }
+
+    .invoice-display{
+        margin-top: 2%;
+    }
+
+    .policy-details{
+        margin-top: 5%;
+    }
+
+    .err-msg{
+        margin-top: 1%;
+    }
+}
+
+
+.invoice-main-text{
+    margin-top: 10%;
+    padding: 60px;
+    color: #fff;
+}
+
+.invoice-main-text h2{
+    font-weight: 300;
+}
+
+.btn-black{
+    background-color: #000 !important;
+    color: #fff;
+}

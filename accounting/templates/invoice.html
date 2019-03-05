@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- invoice page CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'css/invoice.css') }}">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'css/bootstrap.min.css') }}">
+
+    <!-- Jquery-UI CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'css/jquery-ui.min.css') }}">
+
+    <title>Invoice</title>
+</head>
+<body>
+    <div class="container">
+        <div class="sidenav">
+             <div class="invoice-main-text">
+                <h2>Application<br> view policy invoices</h2>
+                <p>Enter policy id to view it's invoices and account balance</p>
+             </div>
+        </div>
+        <div class="main">
+            <div class="row query-policy">
+                <div class="col-md-6 col-sm-12">
+                    <div class="query-form">
+                            <div class="form-group">
+                                <label>Policy ID:</label>
+                                <input data-bind="value: policy_id" type="text" class="form-control" placeholder="Policy ID">
+                            </div>
+                            <div class="form-group">
+                                <label>Date:</label>
+                                <input data-bind="value: query_date" type="text" id="query-date" class="form-control" placeholder="dd/mm/YYYY">
+                            </div>
+                            <button data-bind="click: query" class="btn btn-black">Query</button>
+
+                    </div>
+                </div>
+            </div>
+            <div class="row policy-details">
+                <div class="policy-show">
+                    <div class="col-12 bg-dark border-top rounded-top text-white policy-info">
+                       Policy Id:  <span data-bind="text: policy_id"></span><br/>
+                       Policy Number:  <span data-bind="text: policy_number"></span><br/>
+                       Query Date:  <span data-bind="text: query_date"></span><br/>
+                       Account Balance:  <span data-bind="text: account_balance"></span>
+                    </div>
+                    <div class="invoice-display table-responsive">
+                        <span>Invoices:</span>
+                        <table class="table">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Bill Date</th>
+                                    <th scope="col">Due Date</th>
+                                    <th scope="col">Cancel Date</th>
+                                    <th scope="col">Amount ($)</th>
+                                    <th scope="col">Payment Status</th>
+                                </tr>
+                            </thead>
+                           <tbody data-bind="foreach: invoices">
+                                <tr>
+                                    <td ><span data-bind="text: ($index() + 1)"></span></td>
+                                    <td scope="col"><span data-bind="text: bill_date"></span></td>
+                                    <td scope="col"><span data-bind="text: due_date"></span></td>
+                                    <td scope="col"><span data-bind="text: cancel_date"></span></td>
+                                    <td scope="col"><span data-bind="text: amount_due"></span></td>
+                                    <td scope="col"><span data-bind="text: payment_status"></span></td>
+                                </tr>
+                           </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-12 alert alert-danger err-msg">
+                    <span data-bind="text: error_message"></span>
+                </div>
+            </div>
+      </div>
+    </div>
+
+    <!-- load all javascripts libraries needed -->
+    <script src="{{ url_for('static', filename = 'js/jquery-3.3.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename = 'js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename = 'js/jquery-ui.min.js') }}"></script>
+    <script src="{{ url_for('static', filename = 'js/knockout-3.5.0.js') }}"></script>
+    <!-- load our invoice.js that hooks knockout.js with our page -->
+    <script src="{{ url_for('static', filename = 'js/invoice.js') }}"></script>
+
+</body>
+</html>

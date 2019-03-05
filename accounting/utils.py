@@ -356,6 +356,55 @@ class PolicyAccounting(object):
         else:
             print "Bad Billing Schedule Selected"
 
+    """
+        This function get all the invoices from a policy
+    """
+
+    def get_invoices(self, date_cursor=None):
+        # a dictionary to hold the invoice details
+        policy_invoices = dict()
+        if not date_cursor:
+            date_cursor = datetime.now().date()
+
+        # gets all the policy's invoices that are not deleted
+        invoices = Invoice.query.filter_by(policy_id=self.policy.id) \
+            .filter(Invoice.bill_date <= date_cursor, Invoice.deleted != True) \
+            .order_by(Invoice.bill_date) \
+            .all()
+
+        for invoice in invoices:
+            invoice_details = dict()
+            invoice_details['bill_date'] = invoice.bill_date.strftime("%d %b, %Y")
+            invoice_details['due_date'] = invoice.due_date.strftime("%d %b, %Y")
+            invoice_details['cancel_date'] = invoice.cancel_date.strftime("%d %b, %Y")
+            invoice_details['amount_due'] = invoice.amount_due
+
+            # gets all the payments made before the date_cursor
+            payments = Payment.query.filter_by(policy_id=self.policy.id) \
+                .filter(Payment.transaction_date >= invoice.bill_date,
+                        Payment.transaction_date <= invoice.cancel_date) \
+                .all()
+
+            if payments:
+                for payment in payments:
+                    if payment.amount_paid == invoice.amount_due:
+                        invoice_details['payment_status'] = "Paid"
+                    else:
+                        invoice_details['payment_status'] = "Outstanding"
+            else:
+                invoice_details['payment_status'] = "Outstanding"
+
+            # add the invoice to invoices dictionary with the invoice id as key
+            policy_invoices[invoice.id] = invoice_details
+
+        return policy_invoices
+
+    """
+        This function get all the policy number of a policy
+    """
+    def get_policy_number(self):
+        return self.policy.policy_number
+
 
 """
     This function generates invoices for policy three (a monthly schedule)
