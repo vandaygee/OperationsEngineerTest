@@ -1,5 +1,5 @@
 # You will probably need more methods from flask but this one is a good start.
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, make_response
 import datetime
 
 # Import things from Flask that we need.
@@ -23,7 +23,7 @@ def test():
 
 @app.route("/invoices", methods=['POST'])
 def get_invoice():
-    if request.json:
+    if request.json or request.post:
         data = dict()
         policy_id = int(request.json['policy_id'])
         query_date = datetime.datetime.strptime(request.json['query_date'], '%d/%m/%Y').date()
@@ -32,6 +32,7 @@ def get_invoice():
         data['account_balance'] = pa.return_account_balance(query_date)
         data['invoices'] = pa.get_invoices(query_date)
         return jsonify(data)
-
+    else:
+        return make_response(jsonify({'error': 'Bad request'}), 400)
 
 

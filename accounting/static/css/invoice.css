@@ -91,3 +91,23 @@ body {
     background-color: #000 !important;
     color: #fff;
 }
+
+.error {
+    color: #D8000C;
+    background-color: #FFBABA;
+    font-family: cursive;
+}
+
+input.wrong-field  {
+  border: 1px solid red;
+}
+span.wrong-field  {
+  color: #FF0000;
+}
+
+.validationMessage {
+    color: #f00;
+}
+.customMessage {
+    color: #FFA500;
+}

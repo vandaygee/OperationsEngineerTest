@@ -1,5 +1,11 @@
 $("#query-date").datepicker({ dateFormat: 'dd/mm/yy' });
 
+ko.validation.init({
+  errorElementClass: "wrong-field",
+  decorateElement: true,
+  errorClass: 'wrong-field'
+}, true);
+
 function InvoicesViewModel() {
     var self = this;
     self.invoicesURI='http://0.0.0.0:5000/invoices';
@@ -75,22 +81,56 @@ function InvoicesViewModel() {
 
 function QueryPolicy() {
     var self = this;
-    self.policy_id = ko.observable();
-    self.query_date = ko.observable();
+    self.validateNow = ko.observable(false);
+    self.policy_id = ko.observable().extend({
+        required: {
+            message:"Please enter a valid policy Id",
+            onlyIf: function() {
+                return self.validateNow();
+            }
+        },
+        pattern: {
+            message: 'Please enter a digit value',
+            params: '^[0-9]+$',
+            onlyIf: function(){
+                return self.validateNow();
+            }
+        },
+
+    });
+    self.query_date = ko.observable().extend({
+        required: {
+            message:"Please select or enter a date",
+            onlyIf: function() {
+                return self.validateNow();
+            }
+        },
+        pattern: {
+            message: 'Please enter a valid date format (dd/mm/YYYY)',
+            params: '^([0-2][0-9]|(3)[0-1])(\\/)(((0)[0-9])|((1)[0-2]))(\\/)\\d{4}$',
+            onlyIf: function(){
+                return self.validateNow();
+            }
+        },
+    });
 
     self.query = function() {
+        self.validateNow(true);
         invoicesViewModel.hidePolicyDetails();
-        invoicesViewModel.policy_id(self.policy_id());
-        invoicesViewModel.query_date(self.query_date());
+        if (self.errors().length === 0) {
+            invoicesViewModel.hidePolicyDetails();
+            invoicesViewModel.policy_id(self.policy_id());
+            invoicesViewModel.query_date(self.query_date());
+            invoicesViewModel.loadInvoices({
+                policy_id: self.policy_id(),
+                query_date: self.query_date()
+            });
+        } else {
+          self.errors.showAllMessages();
+        }
 
-        invoicesViewModel.loadInvoices({
-            policy_id: self.policy_id(),
-            query_date: self.query_date()
-        });
-
-        self.policy_id("");
-        self.query_date("");
     }
+    self.errors = ko.validation.group(self);
  }
 
 var invoicesViewModel = new InvoicesViewModel()
